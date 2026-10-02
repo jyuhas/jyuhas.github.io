@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>4-7-8 Breathing</title>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#e9f1ef; --ink:#173a40; --muted:#4f6f73; --ring:#b8d4d0;
+  --inhale:#3b9c9c; --hold:#e0a93b; --exhale:#5b7fc7; --idle:#8bb8b3; --btn:#173a40; --btn-ink:#f2f8f7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#0e1b1f;--ink:#e3f1ef;--muted:#92b0b1;--ring:#234047;--inhale:#4fb3b3;--hold:#e8b84d;--exhale:#7c9be0;--idle:#3d6a6b;--btn:#e3f1ef;--btn-ink:#0e1b1f}
+}
+:root[data-theme="dark"]{--bg:#0e1b1f;--ink:#e3f1ef;--muted:#92b0b1;--ring:#234047;--inhale:#4fb3b3;--hold:#e8b84d;--exhale:#7c9be0;--idle:#3d6a6b;--btn:#e3f1ef;--btn-ink:#0e1b1f}
+*,*:before,*:after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:Georgia,"Iowan Old Style","Times New Roman",serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px 16px;text-align:center}
+h1{margin:0;font-size:1.5rem;font-weight:600;letter-spacing:.01em}
+.sub{margin:0;color:var(--muted);font-size:1rem}
+.stage{position:relative;width:min(78vw,320px);aspect-ratio:1;display:grid;place-items:center}
+.ring{position:absolute;inset:0;border:2px dashed var(--ring);border-radius:50%}
+.orb{position:absolute;inset:0;border-radius:50%;background:var(--idle);transform:scale(.5);transition:background-color .6s}
+.label{position:relative;z-index:1;pointer-events:none}
+#phase{font-size:1.6rem;font-weight:600;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.35)}
+#count{font-size:3.2rem;line-height:1.1;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.35);font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;font-size:.95rem;color:var(--muted)}
+.legend span:before{content:"";display:inline-block;width:.8em;height:.8em;border-radius:50%;margin-right:6px;vertical-align:-1px;background:var(--c)}
+button{font:inherit;font-weight:600;font-size:1.05rem;padding:12px 34px;border:0;border-radius:999px;background:var(--btn);color:var(--btn-ink);cursor:pointer}
+button:focus-visible{outline:3px solid var(--inhale);outline-offset:3px}
+#cycles{margin:0;color:var(--muted);min-height:1.4em}
+.note{margin:0;max-width:34ch;color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+  <h1>4-7-8 breathing</h1>
+  <p class="sub">Breathe in for 4, hold for 7, breathe out for 8.</p>
+
+  <div class="stage" aria-live="polite">
+    <div class="ring"></div>
+    <div class="orb" id="orb"></div>
+    <div class="label">
+      <div id="phase">Ready</div>
+      <div id="count">&nbsp;</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span style="--c:var(--inhale)">Inhale through your nose</span>
+    <span style="--c:var(--hold)">Hold</span>
+    <span style="--c:var(--exhale)">Exhale through your mouth</span>
+  </div>
+
+  <button id="btn" type="button">Start</button>
+  <p id="cycles">Four rounds is a good start.</p>
+  <p class="note">If you feel lightheaded, stop and breathe normally.</p>
+
+<script>
+(function(){
+  var TOTAL=4;
+  var phases=[
+    {name:'Breathe in',  secs:4, from:.5, to:1,  color:'var(--inhale)'},
+    {name:'Hold',        secs:7, from:1,  to:1,  color:'var(--hold)'},
+    {name:'Breathe out', secs:8, from:1,  to:.5, color:'var(--exhale)'}
+  ];
+  var orb=document.getElementById('orb'), phaseEl=document.getElementById('phase'),
+      countEl=document.getElementById('count'), btn=document.getElementById('btn'),
+      cyclesEl=document.getElementById('cycles');
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var running=false, raf=0, start=0, idx=0, cycle=1;
+
+  function setScale(s){orb.style.transform='scale('+s+')'}
+
+  function enter(i){
+    idx=i; start=performance.now();
+    var p=phases[i];
+    phaseEl.textContent=p.name;
+    orb.style.backgroundColor=p.color;
+    cyclesEl.textContent='Round '+cycle+' of '+TOTAL;
+    if(reduce) setScale(p.to);
+  }
+
+  function tick(now){
+    if(!running) return;
+    var p=phases[idx], t=(now-start)/1000;
+    if(t>=p.secs){
+      if(idx===2){
+        if(cycle>=TOTAL){ finish(true); return; }
+        cycle++; enter(0);
+      } else enter(idx+1);
+      p=phases[idx]; t=0;
+    }
+    countEl.textContent=Math.max(1,Math.ceil(p.secs-t));
+    if(!reduce){
+      var k=t/p.secs; k=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+      setScale(p.from+(p.to-p.from)*k);
+    }
+    raf=requestAnimationFrame(tick);
+  }
+
+  function begin(){
+    running=true; cycle=1; btn.textContent='Stop';
+    enter(0); raf=requestAnimationFrame(tick);
+  }
+
+  function finish(done){
+    running=false; cancelAnimationFrame(raf);
+    setScale(.5); orb.style.backgroundColor='var(--idle)';
+    phaseEl.textContent=done?'Well done':'Ready';
+    countEl.innerHTML='&nbsp;';
+    cyclesEl.textContent=done?'You finished '+TOTAL+' rounds. Breathe naturally for a moment.':'Four rounds is a good start.';
+    btn.textContent=done?'Start again':'Start';
+  }
+
+  btn.addEventListener('click',function(){ running?finish(false):begin(); });
+})();
+</script>
+</body>
+</html>
